@@ -97,10 +97,29 @@ npm run cli -- wallet export -a <錢包地址>
 | `--args` | ❌ | EVM 函數參數 (JSON) |
 | `--value` | ❌ | 發送金額 (ETH/SOL) |
 | `--time` | ❌ | 目標時間 (ISO 格式或 +秒數) |
-| `--wallets` | ❌ | 錢包 (逗號分隔或 "all") |
+| `--wallets` | ❌ | 錢包 (見下方說明) |
 | `--gas-priority` | ❌ | low/normal/high |
 | `--simulate` | ❌ | 發送前先模擬交易 |
 | `--dry-run` | ❌ | 只顯示設定，不發送 |
+
+### 錢包指定方式
+
+```bash
+# 使用所有該鏈的錢包
+--wallets all
+
+# 用 alias 名稱指定
+--wallets main,sniper,bot1
+
+# 用 group 名稱指定 (加 @group: 前綴)
+--wallets @group:snipers
+
+# 混合使用
+--wallets main,@group:bots,3XhByuyUGq...
+
+# 用完整地址
+--wallets 3XhByuyUGqiQZUveZrm14p39MxqLJadmCDTcCHiwchoS
+```
 
 ### 時間格式
 
