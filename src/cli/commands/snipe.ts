@@ -41,6 +41,7 @@ export const snipeCommand = new Command('snipe')
     .option('-g, --gas-priority <level>', 'Gas 優先級 (low/normal/high)', 'high')
     .option('--early <ms>', '提前發送毫秒數', '100')
     .option('--dry-run', '模擬執行 (不實際發送)')
+    .option('--simulate', '發送前先模擬交易，確認會成功')
     .action(async (options) => {
         const keyStore = getKeyStore();
 
@@ -187,6 +188,38 @@ export const snipeCommand = new Command('snipe')
         } catch (error) {
             spinner.fail((error as Error).message);
             return;
+        }
+
+        // 如果啟用模擬，先模擬交易
+        if (options.simulate) {
+            console.log(chalk.cyan('\n🔍 模擬交易中...\n'));
+            const simSpinner = ora('模擬中...').start();
+
+            const adapter = adapters.get(chainId);
+            if (adapter && 'simulateTransaction' in adapter) {
+                let allSuccess = true;
+                for (const tx of prepared.signedTransactions) {
+                    const simResult = await (adapter as any).simulateTransaction(tx);
+                    if (!simResult.success) {
+                        simSpinner.fail(`模擬失敗: ${simResult.error}`);
+                        if (simResult.logs) {
+                            console.log(chalk.gray('日誌:'), simResult.logs.slice(-5).join('\n'));
+                        }
+                        allSuccess = false;
+                        break;
+                    }
+                }
+
+                if (!allSuccess) {
+                    console.log(chalk.red('\n⚠️ 交易模擬失敗，已中止發送'));
+                    console.log(chalk.yellow('提示: 可能是餘額不足、未開始、或不在白名單內'));
+                    return;
+                }
+
+                simSpinner.succeed('模擬成功! 交易預計會成功');
+            } else {
+                simSpinner.warn('此鏈不支援模擬，跳過');
+            }
         }
 
         // 設定計時器

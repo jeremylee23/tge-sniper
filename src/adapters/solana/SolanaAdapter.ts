@@ -295,6 +295,38 @@ export class SolanaAdapter implements IChainAdapter {
         }
     }
 
+    /**
+     * 模擬交易 - 在發送前確認交易會成功
+     */
+    async simulateTransaction(signedTx: SignedTransaction): Promise<{ success: boolean; error?: string; logs?: string[] }> {
+        try {
+            const connection = this.getConnection();
+            const rawTransaction = Buffer.from(signedTx.serialized, 'base64');
+            const transaction = Transaction.from(rawTransaction);
+
+            const result = await connection.simulateTransaction(transaction);
+
+            if (result.value.err) {
+                return {
+                    success: false,
+                    error: JSON.stringify(result.value.err),
+                    logs: result.value.logs || undefined,
+                };
+            }
+
+            return {
+                success: true,
+                logs: result.value.logs || undefined,
+            };
+        } catch (error) {
+            const err = error as Error;
+            return {
+                success: false,
+                error: err.message,
+            };
+        }
+    }
+
     async broadcastToMultipleRpcs(signedTx: SignedTransaction): Promise<TxResult> {
         const rawTransaction = Buffer.from(signedTx.serialized, 'base64');
 

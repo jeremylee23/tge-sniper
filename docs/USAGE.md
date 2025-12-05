@@ -5,6 +5,7 @@
 - [安裝與設定](#安裝與設定)
 - [錢包管理](#錢包管理)
 - [搶購操作](#搶購操作)
+- [Solana TGE 搶購](#solana-tge-搶購)
 - [進階設定](#進階設定)
 
 ---
@@ -19,75 +20,55 @@
 ### 安裝步驟
 
 ```bash
-# 1. 安裝依賴
+# 1. Clone 專案
+git clone https://github.com/jeremylee23/tge-sniper.git
+cd tge-sniper
+
+# 2. 安裝依賴
 npm install
 
-# 2. 複製環境變數範本
+# 3. 複製環境變數範本
 cp .env.example .env
-
-# 3. 編輯 .env 設定 RPC URLs (可選)
-```
-
-### RPC 設定
-
-在 `.env` 中設定自訂 RPC URLs：
-
-```env
-# 多個 URL 用逗號分隔
-ETH_RPC_URLS=https://your-rpc-1.com,https://your-rpc-2.com
 ```
 
 ---
 
 ## 錢包管理
 
-### 初始化
-
-首次使用必須初始化 KeyStore：
+### 初始化 (首次使用)
 
 ```bash
-npm run cli wallet init
+npm run cli -- wallet init
 # 設定主密碼 (請牢記，無法找回)
 ```
 
 ### 建立錢包
 
 ```bash
-# 建立單一錢包
-npm run cli wallet create --chain ethereum
+# Solana 錢包
+npm run cli -- wallet create solana
 
-# 批次建立 10 個錢包
-npm run cli wallet create --chain ethereum --count 10
+# EVM 錢包 (Ethereum, Base, Arbitrum...)
+npm run cli -- wallet create ethereum
 
-# 指定別名
-npm run cli wallet create --chain base --alias "sniper"
-```
-
-### 匯入錢包
-
-```bash
-npm run cli wallet import --chain ethereum
-# 提示輸入私鑰
+# 批次建立 5 個
+npm run cli -- wallet create solana -n 5
 ```
 
 ### 查看錢包
 
 ```bash
 # 列出所有
-npm run cli wallet list
+npm run cli -- wallet list
 
 # 按鏈篩選
-npm run cli wallet list --chain solana
+npm run cli -- wallet list solana
 ```
 
-### 查詢餘額
+### 匯出私鑰
 
 ```bash
-# 查詢所有錢包餘額
-npm run cli balance --all
-
-# 查詢特定地址
-npm run cli balance --address 0x123... --chain ethereum
+npm run cli -- wallet export -a <錢包地址>
 ```
 
 ---
@@ -98,78 +79,93 @@ npm run cli balance --address 0x123... --chain ethereum
 
 ```
 1. 準備錢包 (確保有足夠餘額)
-2. 取得合約地址與函數簽名
-3. 設定搶購參數
-4. 執行預簽名
-5. 等待時間觸發
+2. 取得合約參數 (見下方說明)
+3. 執行搶購命令
+4. 輸入密碼
+5. 系統預簽名後等待時間觸發
 6. 自動廣播交易
-```
-
-### 完整命令
-
-```bash
-npm run cli snipe \
-  --chain ethereum \
-  --contract 0x1234567890abcdef... \
-  --function "buy(uint256)" \
-  --args "[\"1000000000000000000\"]" \
-  --value 0.1 \
-  --time "2024-01-15T14:00:00Z" \
-  --wallets all \
-  --gas-priority high \
-  --early 100
 ```
 
 ### 參數說明
 
 | 參數 | 必要 | 說明 |
 |------|------|------|
-| `--chain` | ✅ | 目標區塊鏈 |
-| `--contract` | ✅ | 合約地址 |
-| `--function` | ❌ | 函數簽名 |
-| `--args` | ❌ | 函數參數 (JSON) |
+| `--chain` | ✅ | 目標區塊鏈 (solana, ethereum...) |
+| `--contract` | ✅ | 合約/Program 地址 |
+| `--data` | ❌ | 原始交易資料 (Solana Instruction JSON) |
+| `--function` | ❌ | EVM 函數簽名 |
+| `--args` | ❌ | EVM 函數參數 (JSON) |
 | `--value` | ❌ | 發送金額 (ETH/SOL) |
-| `--time` | ❌ | 目標時間 |
+| `--time` | ❌ | 目標時間 (ISO 格式或 +秒數) |
 | `--wallets` | ❌ | 錢包 (逗號分隔或 "all") |
 | `--gas-priority` | ❌ | low/normal/high |
-| `--early` | ❌ | 提前發送毫秒數 |
-| `--dry-run` | ❌ | 模擬執行 |
+| `--simulate` | ❌ | 發送前先模擬交易 |
+| `--dry-run` | ❌ | 只顯示設定，不發送 |
 
 ### 時間格式
 
 ```bash
-# ISO 格式
---time "2024-01-15T14:00:00Z"
+# ISO 格式 (UTC)
+--time "2025-12-09T12:00:00Z"
 
 # 相對時間 (30秒後)
 --time +30
 
-# 省略則互動式輸入
+# 立即發送
+--time +0
 ```
 
-### 範例場景
+---
 
-#### EVM TGE 搶購
+## Solana TGE 搶購
+
+### 步驟 1: 計算帳戶地址
+
+每個項目需要計算用戶的 Escrow 和 Token Account：
 
 ```bash
-npm run cli snipe \
-  --chain base \
-  --contract 0xABC... \
-  --function "contribute()" \
-  --value 0.5 \
-  --time "2024-01-15T14:00:00Z" \
-  --gas-priority high
+npx tsx scripts/calc-accounts.ts
 ```
 
-#### 測試網測試
+輸出會包含完整的 `keys` JSON。
+
+如果換項目或錢包：
+```bash
+npx tsx scripts/calc-accounts.ts <PRESALE地址> <錢包地址>
+```
+
+### 步驟 2: 組裝搶購命令
 
 ```bash
-npm run cli snipe \
-  --chain sepolia \
-  --contract 0xTEST... \
-  --time +30 \
-  --dry-run
+npm run cli -- snipe \
+  --chain solana \
+  --contract <ProgramID> \
+  --data '<完整的 Instruction JSON>' \
+  --wallets all \
+  --time "2025-12-09T12:00:00Z"
 ```
+
+### 完整範例 (WET 項目)
+
+```bash
+npm run cli -- snipe \
+  --chain solana \
+  --contract presSVxnf9UU8jMxhgSMqaRwNiT36qeBdNeTRKjTdbj \
+  --data '{"programId":"presSVxnf9UU8jMxhgSMqaRwNiT36qeBdNeTRKjTdbj","keys":[{"pubkey":"8DcLpDaStJ35nkG789TqR2eExZRR9VbbJzZKwLHdo14T","isSigner":false,"isWritable":true},{"pubkey":"G1CGGeb3RyTdg4KwaFLSYSqMmvt6QEZadgCaxUoqtWRB","isSigner":false,"isWritable":true},{"pubkey":"EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v","isSigner":false,"isWritable":true},{"pubkey":"<YOUR_ESCROW>","isSigner":false,"isWritable":true},{"pubkey":"<YOUR_USDC_TOKEN_ACCOUNT>","isSigner":false,"isWritable":true},{"pubkey":"<YOUR_WALLET>","isSigner":true,"isWritable":true},{"pubkey":"TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA","isSigner":false,"isWritable":false},{"pubkey":"4Xgt6XKZiowAGNdPWngVAwpYbSwAmbBnRBPtCFXhrypc","isSigner":false,"isWritable":false},{"pubkey":"presSVxnf9UU8jMxhgSMqaRwNiT36qeBdNeTRKjTdbj","isSigner":false,"isWritable":false}],"data":[242,35,198,137,82,225,242,182,64,66,15,0,0,0,0,0,0,0,0,0]}' \
+  --wallets all \
+  --time +0
+```
+
+### 金額設定 (data 欄位)
+
+金額編碼在 `data` 陣列的第 9-16 個位元組：
+
+| USDC | data 後半段 |
+|------|-------------|
+| 1 | `64,66,15,0,0,0,0,0` |
+| 10 | `128,150,152,0,0,0,0,0` |
+| 100 | `0,225,245,5,0,0,0,0` |
+| 1000 | `0,202,154,59,0,0,0,0` |
 
 ---
 
@@ -178,14 +174,9 @@ npm run cli snipe \
 ### Gas 策略
 
 ```bash
-# 低優先 (省錢但可能慢)
---gas-priority low
-
-# 正常
---gas-priority normal
-
-# 高優先 (搶購推薦)
---gas-priority high
+--gas-priority low    # 省錢但可能慢
+--gas-priority normal # 正常
+--gas-priority high   # 搶購推薦
 ```
 
 ### 提前發送
@@ -196,20 +187,6 @@ npm run cli snipe \
 --early 100
 ```
 
-### 環境變數
-
-```env
-# 預設 Gas 設定
-DEFAULT_PRIORITY_FEE=2
-HIGH_PRIORITY_FEE=10
-
-# 提前發送 (ms)
-EARLY_SEND_MS=100
-
-# 最大重試
-MAX_RETRY=3
-```
-
 ---
 
 ## 常見問題
@@ -218,10 +195,38 @@ MAX_RETRY=3
 A: 無法找回，需刪除 `data/` 目錄重新初始化。私鑰將遺失！
 
 ### Q: 交易失敗但仍扣 Gas？
-A: 這是區塊鏈特性，無法避免。建議先在測試網測試。
+A: 這是區塊鏈特性，Solana Gas 約 $0.001，EVM 較高。
 
-### Q: 如何提高成功率？
+### Q: 如何獲取合約參數？
 A: 
-1. 使用 `--gas-priority high`
-2. 設定多個 RPC URLs
-3. 適當調整 `--early` 參數
+1. 從區塊瀏覽器分析歷史交易
+2. 使用瀏覽器攔截腳本 (見下方)
+
+### Q: 瀏覽器攔截腳本
+
+在前端網頁的 Console 貼上：
+
+```javascript
+(function() {
+    if (!window.solana) return console.log('❌ 沒有錢包');
+    const orig = window.solana.signTransaction;
+    window.solana.signTransaction = async function(tx) {
+        tx.instructions.forEach((ix, i) => {
+            console.log(`指令 #${i+1}:`);
+            console.log(JSON.stringify({
+                programId: ix.programId.toString(),
+                keys: ix.keys.map(k => ({
+                    pubkey: k.pubkey.toString(),
+                    isSigner: k.isSigner,
+                    isWritable: k.isWritable
+                })),
+                data: Array.from(ix.data)
+            }));
+        });
+        return orig.call(this, tx);
+    };
+    console.log('✅ 攔截器已啟動');
+})();
+```
+
+然後在網頁上執行操作，Console 會顯示完整的 Instruction JSON。
