@@ -9,6 +9,7 @@ import {
     SystemProgram,
     LAMPORTS_PER_SOL,
     sendAndConfirmRawTransaction,
+    ComputeBudgetProgram,
     type TransactionInstruction,
 } from '@solana/web3.js';
 import { Buffer } from 'buffer';
@@ -204,6 +205,17 @@ export class SolanaAdapter implements IChainAdapter {
         transaction.recentBlockhash = blockhash;
         transaction.lastValidBlockHeight = lastValidBlockHeight;
         transaction.feePayer = fromPubkey;
+
+        // 添加 Priority Fee (提高交易優先級)
+        // Compute Unit Limit: 200,000 (通常足夠)
+        // Priority Fee: 根據 gasPriority 設定
+        const priorityFeePerUnit = params.gasPriority === 'high' ? 100000 :
+            params.gasPriority === 'normal' ? 10000 : 1000;
+
+        transaction.add(
+            ComputeBudgetProgram.setComputeUnitLimit({ units: 200000 }),
+            ComputeBudgetProgram.setComputeUnitPrice({ microLamports: priorityFeePerUnit })
+        );
 
         // 如果有指定金額，新增轉帳指令
         if (params.value) {

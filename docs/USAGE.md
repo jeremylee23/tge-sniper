@@ -190,13 +190,26 @@ npm run cli -- snipe \
 
 ## 進階設定
 
-### Gas 策略
+### Gas 策略 (Priority Fee)
+
+Solana 支援 Priority Fee，提高交易優先級：
 
 ```bash
---gas-priority low    # 省錢但可能慢
---gas-priority normal # 正常
---gas-priority high   # 搶購推薦
+--gas-priority low    # 預設，省錢
+--gas-priority normal # 稍微緊急
+--gas-priority high   # 搶購推薦！
 ```
+
+| 優先級 | Priority Fee | 額外成本約 |
+|--------|-------------|-----------|
+| low | 1,000 microLamports | ~$0.0002 |
+| normal | 10,000 microLamports | ~$0.002 |
+| high | 100,000 microLamports | ~$0.02 |
+
+**搶購時務必加 `--gas-priority high`！**
+
+> ⚠️ **注意**: 「廣播成功」不等於「交易成功」！  
+> 錢包需要有足夠的 SOL (Gas) + USDC (購買金額) 才能真正成交。
 
 ### 提前發送
 
