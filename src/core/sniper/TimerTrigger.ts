@@ -16,28 +16,42 @@ export class TimerTrigger {
      * 同步時間 (使用 HTTP 頭)
      * 返回本地時間與伺服器時間的偏移量
      */
-    async syncTime(serverUrl: string = 'https://worldtimeapi.org/api/ip'): Promise<number> {
-        try {
-            const startTime = Date.now();
-            const response = await fetch(serverUrl);
-            const endTime = Date.now();
+    async syncTime(): Promise<number> {
+        // 多個時間源備用
+        const timeServers = [
+            'https://www.google.com',
+            'https://www.cloudflare.com',
+            'https://worldtimeapi.org/api/ip',
+        ];
 
-            // 估算網路延遲
-            const latency = (endTime - startTime) / 2;
+        for (const serverUrl of timeServers) {
+            try {
+                const startTime = Date.now();
+                const response = await fetch(serverUrl, {
+                    method: 'HEAD',
+                    signal: AbortSignal.timeout(3000)
+                });
+                const endTime = Date.now();
 
-            // 從響應頭取得伺服器時間
-            const dateHeader = response.headers.get('date');
-            if (dateHeader) {
-                const serverTime = new Date(dateHeader).getTime() + latency;
-                this.timeOffset = serverTime - Date.now();
-                logger.info(`時間同步完成，偏移量: ${this.timeOffset}ms`);
+                // 估算網路延遲
+                const latency = (endTime - startTime) / 2;
+
+                // 從響應頭取得伺服器時間
+                const dateHeader = response.headers.get('date');
+                if (dateHeader) {
+                    const serverTime = new Date(dateHeader).getTime() + latency;
+                    this.timeOffset = serverTime - Date.now();
+                    logger.info(`時間同步完成，偏移量: ${this.timeOffset}ms`);
+                    return this.timeOffset;
+                }
+            } catch {
+                // 嘗試下一個伺服器
+                continue;
             }
-
-            return this.timeOffset;
-        } catch (error) {
-            logger.warn(`時間同步失敗: ${(error as Error).message}`);
-            return 0;
         }
+
+        logger.warn('時間同步失敗，使用本地時間');
+        return 0;
     }
 
     /**
