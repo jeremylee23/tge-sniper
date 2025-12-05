@@ -56,8 +56,28 @@ export class PreSigner {
                 createdAt: w.createdAt,
             }));
         } else {
+            // 支援 address, alias, 或 @group 格式
+            const walletSelectors = params.wallets;
+
             wallets = allWallets
-                .filter((w) => params.wallets.includes(w.address))
+                .filter((w) => {
+                    for (const selector of walletSelectors) {
+                        // @group:xxx 格式
+                        if (selector.startsWith('@group:')) {
+                            const groupName = selector.slice(7);
+                            if (w.group === groupName) return true;
+                        }
+                        // 地址匹配
+                        else if (w.address === selector || w.address.toLowerCase() === selector.toLowerCase()) {
+                            return true;
+                        }
+                        // alias 匹配
+                        else if (w.alias && w.alias === selector) {
+                            return true;
+                        }
+                    }
+                    return false;
+                })
                 .map(w => ({
                     address: w.address,
                     encryptedPrivateKey: w.encryptedPrivateKey,
