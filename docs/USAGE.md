@@ -101,6 +101,8 @@ npm run cli -- wallet export -a <錢包地址>
 | `--gas-priority` | ❌ | low/normal/high |
 | `--simulate` | ❌ | 發送前先模擬交易 |
 | `--dry-run` | ❌ | 只顯示設定，不發送 |
+| `--password` | ❌ | 主密碼 (用於自動化腳本) |
+| `--no-confirm` | ❌ | 跳過確認提示 (用於自動化腳本) |
 
 ### 錢包指定方式
 
@@ -262,3 +264,41 @@ A:
 ```
 
 然後在網頁上執行操作，Console 會顯示完整的 Instruction JSON。
+
+---
+
+## 自動化腳本
+
+### 完全自動搶購
+
+使用 `--password` 和 `--no-confirm` 參數可實現完全自動化：
+
+```bash
+npm run cli -- snipe \
+  --chain solana \
+  --contract <合約地址> \
+  --data '<交易 JSON>' \
+  --wallets all \
+  --time +0 \
+  --gas-priority high \
+  --password "你的密碼" \
+  --no-confirm
+```
+
+### 監控腳本範例
+
+參考 `scripts/auto-snipe-wet.ts`，包含：
+- API 狀態監控
+- 時間變更警報（音效 + 語音）
+- 自動執行搶購
+
+```bash
+# 執行監控
+npx tsx scripts/auto-snipe-wet.ts
+```
+
+### ⚠️ 安全提醒
+
+- `--password` 會在命令歷史中留下記錄
+- 建議使用後執行 `history -c` 清除歷史
+- 或使用環境變數避免密碼外洩

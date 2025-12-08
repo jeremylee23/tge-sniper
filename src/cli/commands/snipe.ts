@@ -40,6 +40,8 @@ export const snipeCommand = new Command('snipe')
     .option('-w, --wallets <addresses>', '使用的錢包地址 (逗號分隔或 "all")')
     .option('-g, --gas-priority <level>', 'Gas 優先級 (low/normal/high)', 'low')
     .option('--early <ms>', '提前發送毫秒數', '100')
+    .option('--password <password>', '主密碼 (用於自動化腳本，⚠️ 注意安全)')
+    .option('--no-confirm', '跳過確認提示 (用於自動化腳本)')
     .option('--dry-run', '模擬執行 (不實際發送)')
     .option('--simulate', '發送前先模擬交易，確認會成功')
     .action(async (options) => {
@@ -52,14 +54,23 @@ export const snipeCommand = new Command('snipe')
         }
 
         if (!keyStore.isUnlocked()) {
-            const { password } = await inquirer.prompt([
-                {
-                    type: 'password',
-                    name: 'password',
-                    message: '輸入主密碼:',
-                    mask: '*',
-                },
-            ]);
+            let password: string;
+
+            // 優先使用命令列參數的密碼
+            if (options.password) {
+                password = options.password;
+            } else {
+                // 互動式輸入密碼
+                const response = await inquirer.prompt([
+                    {
+                        type: 'password',
+                        name: 'password',
+                        message: '輸入主密碼:',
+                        mask: '*',
+                    },
+                ]);
+                password = response.password;
+            }
 
             const success = await keyStore.unlock(password);
             if (!success) {
@@ -152,19 +163,23 @@ export const snipeCommand = new Command('snipe')
             return;
         }
 
-        // 確認執行
-        const { confirm } = await inquirer.prompt([
-            {
-                type: 'confirm',
-                name: 'confirm',
-                message: '確認開始搶購任務？',
-                default: true,
-            },
-        ]);
+        // 確認執行 (可用 --no-confirm 跳過)
+        if (options.confirm !== false) {
+            const { confirmAnswer } = await inquirer.prompt([
+                {
+                    type: 'confirm',
+                    name: 'confirmAnswer',
+                    message: '確認開始搶購任務？',
+                    default: true,
+                },
+            ]);
 
-        if (!confirm) {
-            console.log(chalk.gray('已取消'));
-            return;
+            if (!confirmAnswer) {
+                console.log(chalk.gray('已取消'));
+                return;
+            }
+        } else {
+            console.log(chalk.yellow('⚡ 自動模式，跳過確認'));
         }
 
         // 初始化組件
